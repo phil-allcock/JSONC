@@ -1,5 +1,6 @@
 /*global gzip, Base64*/
 (function () {
+  const zlib = require('zlib');
 
   var root,
     JSONC = {},
@@ -270,9 +271,12 @@
    * @param bCompress
    * @returns {String}
    */
-  JSONC.pack = function (json, bCompress) {
+  JSONC.pack = function (json, bCompress, callback) {
     var str = JSON.stringify((bCompress ? JSONC.compress(json) : json));
-    return Base64.encode(String.fromCharCode.apply(String, gzip.zip(str,{level:9})));
+    const zip = String.fromCharCode.apply(String, zlib.gzip(str, function (error, result) {
+      callback(result.toString('base64'));
+    }));
+    return null;
   };
   /**
    * Decompress a compressed JSON
@@ -306,11 +310,12 @@
    * @param bDecompress
    * @returns {Object}
    */
-  JSONC.unpack = function (gzipped, bDecompress) {
-    var aArr = getArr(Base64.decode(gzipped)),
-      str = String.fromCharCode.apply(String, gzip.unzip(aArr,{level:9})),
-      json = JSON.parse(str);
-    return bDecompress ? JSONC.decompress(json) : json;
+  JSONC.unpack = function (gzipped, bDecompress, callback) {
+    const decoded = Buffer.from(gzipped, 'base64');
+    var str = String.fromCharCode.apply(String, zlib.unzip(decoded, function (error, result) {
+      json = JSON.parse(JSON.parse(result));
+      callback(json);
+    }));
   };
   /*
    * Expose Hydra to be used in node.js, as AMD module or as global
